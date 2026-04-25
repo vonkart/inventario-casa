@@ -1,0 +1,986 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0f1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Inventario">
+<title>Inventario Casa</title>
+<link rel="manifest" href="manifest.json">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1117;--bg2:#181b24;--bg3:#1f2330;--border:#2a2f3f;--accent:#4ade80;--accent2:#22d3ee;--warn:#f59e0b;--danger:#f87171;--text:#e8eaf0;--muted:#7a8099;--radius:14px;--font:'Sora',sans-serif;--mono:'DM Mono',monospace}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100dvh;padding-bottom:calc(72px + env(safe-area-inset-bottom));-webkit-tap-highlight-color:transparent}
+.topbar{position:sticky;top:0;z-index:100;background:rgba(15,17,23,.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-bottom:1px solid var(--border);padding:14px 20px;display:flex;align-items:center;justify-content:space-between}
+.topbar-title{font-size:1rem;font-weight:600;letter-spacing:.02em}
+.topbar-title span{color:var(--accent)}
+.badge-alert{background:var(--danger);color:#fff;font-family:var(--mono);font-size:.7rem;padding:2px 7px;border-radius:20px;font-weight:500}
+#config-banner{margin:16px 16px 0;background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px}
+#config-banner p{font-size:.82rem;color:var(--muted);margin-bottom:8px}
+.config-row{display:flex;gap:8px}
+#server-input{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:.82rem}
+#server-input:focus{outline:none;border-color:var(--accent2)}
+#notif-bar{margin:12px 16px 0;border-radius:var(--radius);overflow:hidden;display:none}
+.notif-item{display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:.82rem}
+.notif-item.danger{background:rgba(248,113,113,.12);border:1px solid rgba(248,113,113,.25);border-radius:10px;margin-bottom:4px}
+.notif-item.warn{background:rgba(245,158,11,.12);border:1px solid rgba(245,158,11,.25);border-radius:10px;margin-bottom:4px}
+.notif-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.notif-dot.danger{background:var(--danger)}
+.notif-dot.warn{background:var(--warn)}
+.search-area{margin:16px 16px 0;display:flex;flex-direction:column;gap:8px}
+.search-box{display:flex;align-items:center;gap:8px;background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+.search-box input{flex:1;background:none;border:none;outline:none;color:var(--text);font-family:var(--font);font-size:.9rem}
+.search-box input::placeholder{color:var(--muted)}
+.filter-row{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+.filter-row::-webkit-scrollbar{display:none}
+.chip{flex-shrink:0;background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:5px 12px;font-size:.78rem;color:var(--muted);cursor:pointer;transition:all .15s;white-space:nowrap}
+.chip.active{background:var(--accent);border-color:var(--accent);color:#0f1117;font-weight:600}
+.chip:active{transform:scale(.96)}
+#lista{padding:12px 16px 0;display:flex;flex-direction:column;gap:8px}
+.oggetto-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;cursor:pointer;transition:border-color .15s,background .15s;display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:start}
+.oggetto-card:active{background:var(--bg3);border-color:var(--accent2)}
+.oggetto-card.warn{border-left:3px solid var(--warn)}
+.oggetto-card.danger{border-left:3px solid var(--danger)}
+.card-nome{font-size:.95rem;font-weight:500}
+.card-meta{font-size:.75rem;color:var(--muted);margin-top:2px}
+.card-qty{font-family:var(--mono);font-size:.95rem;font-weight:500;text-align:right;color:var(--accent)}
+.card-qty.low{color:var(--warn)}
+.card-qty.empty{color:var(--danger)}
+.card-tags{grid-column:1/-1;display:flex;gap:4px;flex-wrap:wrap;margin-top:6px}
+.tag{font-size:.68rem;padding:2px 8px;border-radius:10px;background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
+.tag.nfc{color:var(--accent2);border-color:rgba(34,211,238,.3);background:rgba(34,211,238,.07)}
+.tag.ean{color:var(--warn);border-color:rgba(245,158,11,.3);background:rgba(245,158,11,.07)}
+.tag.scad{color:var(--danger);border-color:rgba(248,113,113,.3);background:rgba(248,113,113,.07)}
+.bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:100;background:rgba(15,17,23,.96);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);border-top:1px solid var(--border);display:flex;padding-bottom:env(safe-area-inset-bottom)}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 8px;color:var(--muted);cursor:pointer;border:none;background:none;font-family:var(--font);font-size:.65rem;font-weight:500;transition:color .15s}
+.nav-btn svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.6}
+.nav-btn.active{color:var(--accent)}
+.nav-btn:active{transform:scale(.93)}
+.nfc-fab{width:54px;height:54px;border-radius:50%;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;margin:-20px auto 0;box-shadow:0 0 0 4px var(--bg);transition:transform .15s}
+.nfc-fab svg{width:26px;height:26px;stroke:#0f1117;fill:none;stroke-width:2}
+.nfc-fab:active{transform:scale(.92)}
+.overlay{display:none;position:fixed;inset:0;z-index:200;background:rgba(0,0,0,.65);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);align-items:flex-end}
+.overlay.open{display:flex}
+.modal{background:var(--bg2);border:1px solid var(--border);border-radius:20px 20px 0 0;width:100%;max-height:90dvh;overflow-y:auto;padding:20px 20px calc(20px + env(safe-area-inset-bottom));animation:slide-up .22s ease}
+@keyframes slide-up{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-handle{width:36px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 10px}
+.modal-title{font-size:1.05rem;font-weight:600;margin-bottom:18px}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+.modal-header .modal-title{margin-bottom:0}
+.modal-close{width:32px;height:32px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);color:var(--muted);font-size:1.1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;line-height:1}
+.modal-close:active{background:var(--border)}
+.detail-qty-row{display:flex;align-items:center;justify-content:space-between;background:var(--bg3);border-radius:12px;padding:14px 16px;margin-bottom:14px}
+.detail-qty-val{font-family:var(--mono);font-size:1.6rem;font-weight:500;color:var(--accent)}
+.qty-controls{display:flex;gap:8px}
+.qty-btn{width:38px;height:38px;border-radius:50%;background:var(--bg2);border:1px solid var(--border);color:var(--text);font-size:1.3rem;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .12s}
+.qty-btn:active{background:var(--bg3)}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+.info-cell{background:var(--bg3);border-radius:10px;padding:10px 12px}
+.info-cell.full{grid-column:1/-1}
+.info-label{font-size:.68rem;color:var(--muted);margin-bottom:3px;text-transform:uppercase;letter-spacing:.06em}
+.info-val{font-size:.88rem;font-weight:500}
+.nfc-assoc{background:var(--bg3);border-radius:10px;padding:12px 14px;margin-bottom:14px;border:1px dashed var(--border)}
+.nfc-assoc.has-nfc{border-style:solid;border-color:rgba(34,211,238,.3);background:rgba(34,211,238,.05)}
+.nfc-assoc p{font-size:.8rem;color:var(--muted);margin-bottom:8px}
+.nfc-assoc code{font-family:var(--mono);font-size:.78rem;color:var(--accent2)}
+.movimenti-list{display:flex;flex-direction:column;gap:6px}
+.movimento{display:flex;justify-content:space-between;align-items:center;font-size:.8rem;color:var(--muted);padding:6px 0;border-bottom:1px solid var(--border)}
+.movimento:last-child{border-bottom:none}
+.mov-delta{font-family:var(--mono);font-weight:500}
+.mov-delta.pos{color:var(--accent)}
+.mov-delta.neg{color:var(--danger)}
+.form-group{margin-bottom:12px}
+.form-label{font-size:.75rem;color:var(--muted);margin-bottom:5px;display:block;text-transform:uppercase;letter-spacing:.05em}
+.form-input,.form-select{width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:11px 13px;color:var(--text);font-family:var(--font);font-size:.9rem}
+.form-input:focus,.form-select:focus{outline:none;border-color:var(--accent2)}
+.form-select option{background:var(--bg2)}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{width:100%;padding:13px;border-radius:10px;border:none;font-family:var(--font);font-size:.92rem;font-weight:600;cursor:pointer;transition:opacity .12s,transform .1s}
+.btn:active{transform:scale(.98);opacity:.85}
+.btn-primary{background:var(--accent);color:#0f1117}
+.btn-secondary{background:var(--bg3);color:var(--text);border:1px solid var(--border);margin-top:8px}
+.btn-accent2{background:rgba(34,211,238,.15);color:var(--accent2);border:1px solid rgba(34,211,238,.3);margin-top:8px}
+.btn-warn{background:rgba(245,158,11,.15);color:var(--warn);border:1px solid rgba(245,158,11,.3);margin-top:8px}
+.btn-danger{background:rgba(248,113,113,.15);color:var(--danger);border:1px solid rgba(248,113,113,.3);margin-top:8px}
+.product-preview{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:16px;display:flex;gap:12px;align-items:flex-start}
+.product-preview img{width:64px;height:64px;object-fit:contain;border-radius:8px;background:#fff;padding:4px;flex-shrink:0}
+.product-preview-info{flex:1;min-width:0}
+.product-preview-name{font-size:.92rem;font-weight:600;margin-bottom:3px}
+.product-preview-brand{font-size:.78rem;color:var(--muted);margin-bottom:4px}
+.product-preview-code{font-family:var(--mono);font-size:.72rem;color:var(--accent2)}
+.source-badge{display:inline-block;font-size:.65rem;padding:2px 7px;border-radius:10px;margin-top:4px;background:rgba(74,222,128,.1);color:var(--accent);border:1px solid rgba(74,222,128,.25)}
+.scan-mode-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;margin:12px 0}
+.scan-mode-btn{background:var(--bg3);border:1px solid var(--border);border-radius:12px;padding:16px 12px;display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;transition:border-color .15s;font-family:var(--font)}
+.scan-mode-btn:active{border-color:var(--accent);background:var(--bg2)}
+.scan-mode-btn svg{width:28px;height:28px;stroke:var(--muted);fill:none;stroke-width:1.6}
+.scan-mode-btn span{font-size:.82rem;font-weight:500}
+.scan-mode-btn small{font-size:.7rem;color:var(--muted);text-align:center}
+#barcode-overlay{display:none;position:fixed;inset:0;z-index:300;background:#000;flex-direction:column}
+#barcode-overlay.open{display:flex}
+#barcode-video{width:100%;flex:1;object-fit:cover}
+.barcode-ui{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.barcode-frame{width:72%;max-width:300px;aspect-ratio:3/1.2;border:2px solid var(--accent);border-radius:10px;box-shadow:0 0 0 4000px rgba(0,0,0,.55);position:relative}
+.barcode-line{position:absolute;left:8%;right:8%;top:50%;height:1.5px;background:var(--accent);opacity:.7;animation:scan-line 1.6s ease-in-out infinite}
+@keyframes scan-line{0%,100%{top:20%;opacity:.5}50%{top:80%;opacity:1}}
+.barcode-hint{margin-top:24px;color:rgba(255,255,255,.7);font-size:.85rem;text-align:center;padding:0 20px}
+.barcode-cancel{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom));left:50%;transform:translateX(-50%);background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:11px 28px;font-family:var(--font);font-size:.9rem;font-weight:500;cursor:pointer;pointer-events:all}
+#barcode-status{position:absolute;top:calc(20px + env(safe-area-inset-top));left:0;right:0;text-align:center;font-family:var(--mono);font-size:.78rem;color:rgba(255,255,255,.6);padding:0 20px}
+#nfc-overlay{display:none;position:fixed;inset:0;z-index:300;background:var(--bg);flex-direction:column;align-items:center;justify-content:center;gap:24px}
+#nfc-overlay.open{display:flex}
+.nfc-ring{width:140px;height:140px;border-radius:50%;border:2px solid rgba(74,222,128,.3);display:flex;align-items:center;justify-content:center;animation:ring-pulse 1.4s ease-in-out infinite}
+.nfc-ring-inner{width:100px;height:100px;border-radius:50%;border:2px solid rgba(74,222,128,.6);display:flex;align-items:center;justify-content:center}
+.nfc-ring-core{width:64px;height:64px;border-radius:50%;background:rgba(74,222,128,.15);border:2px solid var(--accent);display:flex;align-items:center;justify-content:center}
+.nfc-ring-core svg{width:28px;height:28px;stroke:var(--accent);fill:none;stroke-width:1.8}
+@keyframes ring-pulse{0%,100%{transform:scale(1);opacity:1}50%{transform:scale(1.06);opacity:.7}}
+.nfc-hint{font-size:.9rem;color:var(--muted);text-align:center}
+.nfc-hint strong{display:block;font-size:1.05rem;color:var(--text);font-weight:600;margin-bottom:6px}
+#view-settings{display:none;padding:16px}
+.settings-section{margin-bottom:24px}
+.settings-title{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:10px}
+.settings-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:16px}
+.settings-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none;padding-bottom:0}
+.settings-row-label{font-size:.88rem}
+.settings-row-val{font-family:var(--mono);font-size:.8rem;color:var(--accent2)}
+#toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:10px 20px;font-size:.85rem;white-space:nowrap;opacity:0;transition:opacity .2s,transform .2s;z-index:500;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.success{border-color:rgba(74,222,128,.4);color:var(--accent)}
+#toast.error{border-color:rgba(248,113,113,.4);color:var(--danger)}
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty svg{width:48px;height:48px;stroke:var(--border);fill:none;stroke-width:1.2;margin-bottom:12px}
+.empty p{font-size:.9rem}
+.spinner{display:flex;justify-content:center;padding:40px}
+.spin{width:28px;height:28px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">inv<span>.</span>casa</div>
+  <div style="display:flex;align-items:center;gap:10px">
+    <span id="alert-badge" class="badge-alert" style="display:none">0</span>
+    <button onclick="generaPDF()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:4px 10px;color:var(--muted);font-family:var(--font);font-size:.72rem;cursor:pointer;white-space:nowrap">PDF</button>
+  </div>
+</div>
+
+<div id="config-banner">
+  <p>Indirizzo del server (PC su rete WiFi di casa)</p>
+  <div class="config-row">
+    <input id="server-input" type="url" placeholder="http://192.168.1.140:5000" autocomplete="off" spellcheck="false">
+    <button class="btn btn-primary" style="width:auto;padding:9px 16px;font-size:.82rem" onclick="salvaServer()">Connetti</button>
+  </div>
+</div>
+
+<div id="notif-bar"></div>
+
+<div id="view-lista">
+  <div class="search-area">
+    <div class="search-box">
+      <span style="color:var(--muted);font-size:.85rem">&#9906;</span>
+      <input id="search-input" type="search" placeholder="Cerca oggetto..." oninput="cercaOggetti()">
+    </div>
+    <div class="filter-row" id="filter-stanze">
+      <div class="chip active" onclick="selezionaStanza(this,'')">Tutte</div>
+    </div>
+    <div class="filter-row" id="filter-extra">
+      <div class="chip" onclick="toggleExtra(this,'scaduti')">In scadenza</div>
+      <div class="chip" onclick="toggleExtra(this,'esauriti')">Esauriti</div>
+    </div>
+  </div>
+  <div id="lista"></div>
+</div>
+
+<div id="view-settings">
+  <div class="settings-section">
+    <div class="settings-title">Connessione</div>
+    <div class="settings-card">
+      <div class="settings-row"><span class="settings-row-label">Server</span><span class="settings-row-val" id="set-server-val">—</span></div>
+      <div class="settings-row" style="border-bottom:none;padding-bottom:0"><span class="settings-row-label">Stato</span><span class="settings-row-val" id="set-stato">—</span></div>
+    </div>
+    <div style="margin-top:10px">
+      <div class="config-row">
+        <input id="server-input-2" type="url" placeholder="http://192.168.1.140:5000" autocomplete="off" style="flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);font-family:var(--mono);font-size:.82rem">
+        <button class="btn btn-primary" style="width:auto;padding:9px 16px;font-size:.82rem" onclick="salvaServer2()">Aggiorna</button>
+      </div>
+      <button class="btn btn-danger" style="margin-top:12px" onclick="disconnetti()">Disconnetti dal server</button>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-title">Statistiche</div>
+    <div class="settings-card" id="stats-card"><div class="spinner"><div class="spin"></div></div></div>
+  </div>
+</div>
+
+<nav class="bottom-nav">
+  <button class="nav-btn active" id="nav-lista" onclick="mostraVista('lista')">
+    <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    Inventario
+  </button>
+  <button class="nav-btn" id="nav-scan" onclick="mostraSceltaScan()">
+    <div class="nfc-fab">
+      <svg viewBox="0 0 24 24"><path d="M23 3H1v13h8v2H7v2h10v-2h-2v-2h8V3zm-2 11H3V5h18v9z"/></svg>
+    </div>
+    Scansiona
+  </button>
+  <button class="nav-btn" id="nav-settings" onclick="mostraVista('settings')">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Impostazioni
+  </button>
+</nav>
+
+<!-- Camera barcode -->
+<div id="barcode-overlay">
+  <video id="barcode-video" autoplay muted playsinline></video>
+  <div class="barcode-ui">
+    <div id="barcode-status">Inquadra il codice a barre</div>
+    <div class="barcode-frame"><div class="barcode-line"></div></div>
+    <div class="barcode-hint">Tieni il codice fermo a 10-15 cm dalla fotocamera</div>
+  </div>
+  <div style="position:absolute;bottom:calc(90px + env(safe-area-inset-bottom));left:0;right:0;display:flex;gap:12px;justify-content:center;pointer-events:all">
+    <button id="torch-btn" onclick="toggleTorcia()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:10px 20px;font-family:var(--font);font-size:.85rem;cursor:pointer">Torcia</button>
+    <button onclick="inserisciManuale()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;border-radius:10px;padding:10px 20px;font-family:var(--font);font-size:.85rem;cursor:pointer">Inserisci codice</button>
+  </div>
+  <button class="barcode-cancel" onclick="chiudiBarcode()">Annulla</button>
+</div>
+
+<!-- NFC overlay -->
+<div id="nfc-overlay">
+  <div class="nfc-ring"><div class="nfc-ring-inner"><div class="nfc-ring-core">
+    <svg viewBox="0 0 24 24"><path d="M20 7C20 7 17 4 12 4S4 7 4 7"/><path d="M17 10.5C17 10.5 15.5 9 12 9S7 10.5 7 10.5"/><circle cx="12" cy="14" r="2"/></svg>
+  </div></div></div>
+  <div class="nfc-hint" id="nfc-hint-text"><strong>Avvicina il tag NFC</strong>Tocca lo smartphone al tag</div>
+  <button class="btn btn-secondary" style="max-width:200px" onclick="chiudiNFC()">Annulla</button>
+</div>
+
+<div class="overlay" id="overlay" onclick="chiudiModal(event)">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script>
+let SERVER=localStorage.getItem('inv_server')||'';
+let filtroStanza='',filtroExtra='',searchTimer=null;
+let stanze=[],categorie=[],oggettoCorrente=null;
+let barcodeReader=null,barcodeStream=null,nfcCallback=null,_barcodeCorrente=null;
+
+window.addEventListener('load',async()=>{
+  if(SERVER){
+    document.getElementById('server-input').value=SERVER;
+    document.getElementById('config-banner').style.display='none';
+    await Promise.all([caricaStanze(),caricaCategorie()]);
+    await caricaLista(); caricaNotifiche();
+  }
+});
+
+function salvaServer(){
+  const v=document.getElementById('server-input').value.trim().replace(/\/$/,'');
+  if(!v)return; SERVER=v; localStorage.setItem('inv_server',SERVER);
+  document.getElementById('config-banner').style.display='none';
+  Promise.all([caricaStanze(),caricaCategorie()]).then(()=>{caricaLista();caricaNotifiche();});
+}
+function disconnetti(){
+  if(!confirm('Disconnettersi dal server? Dovrai reinserire l\'indirizzo per riconnetterti.'))return;
+  SERVER='';
+  localStorage.removeItem('inv_server');
+  document.getElementById('server-input').value='';
+  document.getElementById('server-input-2').value='';
+  document.getElementById('set-server-val').textContent='—';
+  document.getElementById('set-stato').textContent='—';
+  document.getElementById('set-stato').style.color='';
+  document.getElementById('config-banner').style.display='';
+  document.getElementById('notif-bar').style.display='none';
+  document.getElementById('alert-badge').style.display='none';
+  document.getElementById('lista').innerHTML='';
+  mostraVista('lista');
+  toast('Disconnesso','success');
+}
+function salvaServer2(){
+  const v=document.getElementById('server-input-2').value.trim().replace(/\/$/,'');
+  if(!v)return; SERVER=v; localStorage.setItem('inv_server',SERVER);
+  document.getElementById('server-input').value=SERVER;
+  toast('Server aggiornato','success'); caricaLista(); caricaNotifiche(); caricaStats();
+}
+async function api(path,opts={}){
+  if(!SERVER)throw new Error('Server non configurato');
+  const headers={'Content-Type':'application/json','ngrok-skip-browser-warning':'true'};
+  if(opts.headers)Object.assign(headers,opts.headers);
+  const r=await fetch(SERVER+path,{...opts,headers});
+  return r.json();
+}
+
+async function caricaNotifiche(){
+  try{
+    const d=await api('/notifiche'); if(!d.successo)return;
+    const n=d.dati,bar=document.getElementById('notif-bar'),badge=document.getElementById('alert-badge');
+    const items=[];
+    if(n.scaduti.length) items.push(`<div class="notif-item danger"><div class="notif-dot danger"></div>${n.scaduti.length} prodott${n.scaduti.length>1?'i scaduti':'o scaduto'}</div>`);
+    if(n.in_scadenza.length) items.push(`<div class="notif-item warn"><div class="notif-dot warn"></div>${n.in_scadenza.length} in scadenza nei prossimi 5 giorni</div>`);
+    if(n.esauriti.length) items.push(`<div class="notif-item warn"><div class="notif-dot warn"></div>${n.esauriti.length} esaurit${n.esauriti.length>1?'i':'o'}</div>`);
+    if(items.length){bar.innerHTML=items.join('');bar.style.display='block';badge.textContent=n.totale;badge.style.display='';}
+    else{bar.style.display='none';badge.style.display='none';}
+  }catch{}
+}
+
+async function caricaStanze(){
+  try{
+    const d=await api('/stanze'); if(!d.successo)return; stanze=d.dati;
+    const bar=document.getElementById('filter-stanze');
+    bar.innerHTML='<div class="chip active" onclick="selezionaStanza(this,\'\')">Tutte</div>';
+    stanze.forEach(s=>{const c=document.createElement('div');c.className='chip';c.textContent=s.nome;c.onclick=()=>selezionaStanza(c,s.id);bar.appendChild(c);});
+  }catch{}
+}
+async function caricaCategorie(){
+  try{const d=await api('/categorie');if(d.successo)categorie=d.dati;}catch{}
+}
+function selezionaStanza(el,id){
+  filtroStanza=id;filtroExtra='';
+  document.querySelectorAll('#filter-stanze .chip').forEach(c=>c.classList.remove('active'));el.classList.add('active');
+  document.querySelectorAll('#filter-extra .chip').forEach(c=>c.classList.remove('active'));
+  caricaLista();
+}
+function toggleExtra(el,tipo){
+  filtroExtra=filtroExtra===tipo?'':tipo;
+  document.querySelectorAll('#filter-extra .chip').forEach(c=>c.classList.remove('active'));
+  if(filtroExtra){el.classList.add('active');filtroStanza='';document.querySelectorAll('#filter-stanze .chip').forEach(c=>c.classList.remove('active'));document.querySelector('#filter-stanze .chip').classList.add('active');}
+  caricaLista();
+}
+
+async function caricaLista(){
+  const lista=document.getElementById('lista');
+  lista.innerHTML='<div class="spinner"><div class="spin"></div></div>';
+  const cerca=document.getElementById('search-input').value.trim();
+  let qs=new URLSearchParams();
+  if(filtroStanza)qs.set('stanza_id',filtroStanza);
+  if(cerca)qs.set('cerca',cerca);
+  if(filtroExtra==='scaduti')qs.set('scaduti','1');
+  if(filtroExtra==='esauriti')qs.set('esauriti','1');
+  try{
+    const d=await api('/oggetti?'+qs);
+    if(!d.successo){lista.innerHTML='<div class="empty"><p>Errore caricamento</p></div>';return;}
+    if(!d.dati.length){lista.innerHTML=`<div class="empty"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg><p>Nessun oggetto trovato</p></div>`;return;}
+    lista.innerHTML=d.dati.map(renderCard).join('');
+  }catch{lista.innerHTML=`<div class="empty"><p>Server non raggiungibile.<br>Controlla che il PC sia acceso.</p></div>`;}
+}
+function renderCard(o){
+  const oggi=new Date().toISOString().slice(0,10),scad=o.data_scadenza;
+  const scaduto=scad&&scad<oggi,inScad=scad&&!scaduto&&scad<=new Date(Date.now()+7*864e5).toISOString().slice(0,10);
+  const esaurito=o.quantita_min>0&&o.quantita<=0,basso=o.quantita_min>0&&o.quantita>0&&o.quantita<=o.quantita_min;
+  let cc='oggetto-card'+((scaduto||esaurito)?' danger':(inScad||basso)?' warn':'');
+  let qc='card-qty'+(esaurito?' empty':basso?' low':'');
+  const tags=[];
+  if(o.nfc_id)tags.push(`<span class="tag nfc">NFC</span>`);
+  if(o.barcode)tags.push(`<span class="tag ean">EAN</span>`);
+  if(scaduto)tags.push(`<span class="tag scad">Scaduto</span>`);
+  else if(inScad)tags.push(`<span class="tag scad">Scade ${scad}</span>`);
+  if(o.stanza)tags.push(`<span class="tag">${esc(o.stanza)}</span>`);
+  if(o.categoria)tags.push(`<span class="tag">${esc(o.categoria)}</span>`);
+  return `<div class="${cc}" onclick="apriOggetto(${o.id})">
+    <div><div class="card-nome">${esc(o.nome)}</div><div class="card-meta">${esc(o.descrizione||'')}</div></div>
+    <div class="${qc}">${o.quantita} ${esc(o.unita_misura||'pz')}</div>
+    ${tags.length?`<div class="card-tags">${tags.join('')}</div>`:''}
+  </div>`;
+}
+function cercaOggetti(){clearTimeout(searchTimer);searchTimer=setTimeout(caricaLista,350);}
+
+async function apriOggetto(id){
+  apriModal('<div class="spinner"><div class="spin"></div></div>');
+  try{
+    const d=await api(`/oggetti/${id}`);if(!d.successo)return;
+    const o=d.dati;oggettoCorrente=o;
+    const oggi=new Date().toISOString().slice(0,10),scaduto=o.data_scadenza&&o.data_scadenza<oggi;
+    const movHtml=o.movimenti?.length
+      ?o.movimenti.slice(0,8).map(m=>`<div class="movimento"><span>${m.tipo}${m.nota?' · '+esc(m.nota):''}</span><span class="mov-delta ${m.delta>=0?'pos':'neg'}">${m.delta>=0?'+':''}${m.delta}</span></div>`).join('')
+      :'<p style="font-size:.8rem;color:var(--muted)">Nessun movimento</p>';
+    const nfcHtml=o.nfc_id
+      ?`<div class="nfc-assoc has-nfc">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+            <p style="margin:0">Tag NFC associato</p>
+            <button onclick="dissociaNFC(${o.id})" style="background:none;border:1px solid rgba(248,113,113,.3);color:var(--danger);font-family:var(--font);font-size:.75rem;cursor:pointer;padding:3px 9px;border-radius:6px">Dissocia</button>
+          </div>
+          <code>${esc(o.nfc_id)}</code>
+          <div style="margin-top:8px"><button class="btn btn-accent2" style="padding:8px;font-size:.8rem;margin-top:0" onclick="richiediNFC(${o.id})">Sostituisci tag</button></div>
+        </div>`
+      :`<div class="nfc-assoc"><p>Nessun tag NFC associato</p><button class="btn btn-accent2" style="margin-top:6px" onclick="richiediNFC(${o.id})">Associa tag NFC</button></div>`;
+    const barcodeHtml=o.barcode?`<div class="info-cell"><div class="info-label">Barcode EAN</div><div class="info-val" style="font-family:var(--mono);font-size:.8rem;color:var(--accent2)">${esc(o.barcode)}</div></div>`:'';
+    document.getElementById('modal-content').innerHTML=`
+      ${mh(o.nome)}
+      <div class="detail-qty-row">
+        <div>
+          <div style="font-size:.7rem;color:var(--muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.06em">Quantità</div>
+          <div class="detail-qty-val" id="d-qty">${o.quantita} <span style="font-size:1rem;color:var(--muted)">${esc(o.unita_misura||'pz')}</span></div>
+        </div>
+        <div class="qty-controls">
+          <button class="qty-btn" onclick="cambiaQty(${o.id},-1)">−</button>
+          <button class="qty-btn" onclick="cambiaQty(${o.id},+1)">+</button>
+        </div>
+      </div>
+      <div class="info-grid">
+        <div class="info-cell"><div class="info-label">Categoria</div><div class="info-val">${esc(o.categoria||'—')}</div></div>
+        <div class="info-cell"><div class="info-label">Stanza</div><div class="info-val">${esc(o.stanza||'—')}</div></div>
+        <div class="info-cell"><div class="info-label">Soglia min.</div><div class="info-val">${o.quantita_min||0} ${esc(o.unita_misura||'pz')}</div></div>
+        <div class="info-cell"><div class="info-label">Scadenza</div><div class="info-val" ${scaduto?'style="color:var(--danger)"':''}>${o.data_scadenza||'—'}</div></div>
+        ${barcodeHtml}
+        ${o.note?`<div class="info-cell full"><div class="info-label">Note</div><div class="info-val">${esc(o.note)}</div></div>`:''}
+      </div>
+      ${nfcHtml}
+      <div style="margin-bottom:14px">
+        <div style="font-size:.7rem;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px">Ultimi movimenti</div>
+        <div class="movimenti-list">${movHtml}</div>
+      </div>
+      <button class="btn btn-primary" onclick="apriFormModifica(${o.id})">Modifica</button>
+      <button class="btn btn-secondary" style="margin-top:8px" onclick="mostraQR(${o.id},'${esc(o.nome)}')">Genera QR code</button>
+      <button class="btn btn-danger" onclick="eliminaOggetto(${o.id})">Elimina</button>`;
+  }catch{chiudiModal();toast('Errore caricamento','error');}
+}
+async function cambiaQty(id,delta){
+  try{
+    const d=await api(`/oggetti/${id}/quantita`,{method:'POST',body:JSON.stringify({delta})});
+    if(!d.successo){toast(d.messaggio,'error');return;}
+    const el=document.getElementById('d-qty');
+    if(el)el.innerHTML=`${d.dati.quantita} <span style="font-size:1rem;color:var(--muted)">${esc(d.dati.unita_misura||'pz')}</span>`;
+    caricaLista();toast(`${delta>0?'+':''}${delta} ${d.dati.unita_misura||'pz'}`,'success');
+  }catch{toast('Errore','error');}
+}
+async function eliminaOggetto(id){
+  if(!confirm('Eliminare questo oggetto?'))return;
+  try{await api(`/oggetti/${id}`,{method:'DELETE'});chiudiModal();caricaLista();toast('Eliminato','success');}
+  catch{toast('Errore eliminazione','error');}
+}
+function mostraQR(id,nome){
+  const qrContent='INV:'+id;
+  apriModal(`
+    ${mh("QR code — "+nome)}
+    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:8px 0 16px">
+      <div id="qr-canvas" style="background:#fff;padding:16px;border-radius:12px"></div>
+      <div style="text-align:center">
+        <div style="font-family:var(--mono);font-size:.8rem;color:var(--accent2);margin-bottom:4px">${esc(qrContent)}</div>
+        <div style="font-size:.75rem;color:var(--muted)">Scansionabile con la fotocamera dell'app</div>
+      </div>
+      <button class="btn btn-primary" onclick="scaricaQR(${id},'${esc(nome)}')">Scarica immagine</button>
+      <button class="btn btn-secondary" onclick="stampaQR()">Stampa</button>
+    </div>`);
+  setTimeout(()=>{
+    const el=document.getElementById('qr-canvas');
+    if(!el)return;
+    new QRCode(el,{text:qrContent,width:200,height:200,colorDark:'#0f1117',colorLight:'#ffffff',correctLevel:QRCode.CorrectLevel.M});
+  },100);
+}
+function scaricaQR(id,nome){
+  const canvas=document.querySelector('#qr-canvas canvas');
+  if(!canvas){toast('QR non pronto','error');return;}
+  const a=document.createElement('a');
+  a.href=canvas.toDataURL('image/png');
+  a.download=`qr-inv-${id}-${nome.replace(/[^a-z0-9]/gi,'-').toLowerCase()}.png`;
+  a.click();
+  toast('QR scaricato','success');
+}
+function stampaQR(){
+  const canvas=document.querySelector('#qr-canvas canvas');
+  if(!canvas){toast('QR non pronto','error');return;}
+  const w=window.open('','_blank');
+  w.document.write(`<html><body style="text-align:center;padding:20px"><img src="${canvas.toDataURL()}" style="max-width:200px"><br><p style="font-family:monospace">inv.casa</p><script>window.onload=()=>{window.print();window.close()}<\/script></body></html>`);
+  w.document.close();
+}
+
+function mostraFormNuovo(prefill={}){apriModal(formHtml(null,prefill));}
+function apriFormModifica(id){apriModal(formHtml(oggettoCorrente,{}));}
+
+function formHtml(o,prefill={}){
+  const v=(k,def='')=>esc(o?(o[k]??''):(prefill[k]??def));
+  const stOpts=stanze.map(s=>`<option value="${s.id}" ${(o&&o.stanza_id==s.id)||(prefill.stanza_id==s.id)?'selected':''}>${esc(s.nome)}</option>`).join('');
+  const catOpts=categorie.map(c=>`<option value="${c.id}" ${(o&&o.categoria_id==c.id)||(prefill.categoria_id==c.id)?'selected':''}>${esc(c.nome)}</option>`).join('');
+  const barcodeVal=o?.barcode||prefill.barcode||'';
+  const barcodeRow=barcodeVal?`<div class="form-group"><label class="form-label">Barcode EAN</label><input class="form-input" type="text" value="${esc(barcodeVal)}" readonly style="color:var(--accent2);font-family:var(--mono);font-size:.82rem"></div>`:'';
+  const previewHtml=prefill._preview?`
+    <div class="product-preview">
+      ${prefill._img?`<img src="${prefill._img}" alt="" onerror="this.style.display='none'">`:''}
+      <div class="product-preview-info">
+        <div class="product-preview-name">${esc(prefill._prodName||'')}</div>
+        <div class="product-preview-brand">${esc(prefill._brand||'')}</div>
+        <div class="product-preview-code">${esc(barcodeVal)}</div>
+        <span class="source-badge">${esc(prefill._source||'')}</span>
+      </div>
+    </div>`:'';
+  // Salva barcode in variabile globale per evitare problemi con caratteri speciali inline
+  _barcodeCorrente = barcodeVal || null;
+  const oggettoId = o ? o.id : null;
+  return `
+    ${mh(o?'Modifica oggetto':(prefill._preview?'Conferma prodotto':'Nuovo oggetto'))}
+    ${previewHtml}
+    <div class="form-group"><label class="form-label">Nome *</label><input id="f-nome" class="form-input" type="text" value="${v('nome')}" placeholder="es. Olio EVO"></div>
+    <div class="form-group"><label class="form-label">Descrizione</label><input id="f-desc" class="form-input" type="text" value="${v('descrizione')}" placeholder="Marca, formato..."></div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Categoria</label><select id="f-cat" class="form-select"><option value="">—</option>${catOpts}</select></div>
+      <div class="form-group"><label class="form-label">Stanza</label><select id="f-stanza" class="form-select"><option value="">—</option>${stOpts}</select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Quantità</label><input id="f-qty" class="form-input" type="number" step="0.1" min="0" value="${o?o.quantita:(prefill.quantita??1)}"></div>
+      <div class="form-group"><label class="form-label">Unità</label><input id="f-um" class="form-input" type="text" value="${v('unita_misura','pz')}" placeholder="pz, kg, L..."></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">Soglia minima</label><input id="f-min" class="form-input" type="number" step="0.1" min="0" value="${o?(o.quantita_min||0):(prefill.quantita_min??0)}"></div>
+      <div class="form-group"><label class="form-label">Scadenza</label><input id="f-scad" class="form-input" type="date" value="${v('data_scadenza')}"></div>
+    </div>
+    <div class="form-group"><label class="form-label">Note</label><input id="f-note" class="form-input" type="text" value="${v('note')}" placeholder="Note libere"></div>
+    ${barcodeRow}
+    <button class="btn btn-primary" onclick="salvaOggetto(${oggettoId})">${o?'Salva modifiche':(prefill._preview?'Aggiungi al magazzino':'Aggiungi')}</button>
+    <button class="btn btn-secondary" onclick="chiudiModal()">Annulla</button>`;
+}
+
+async function salvaOggetto(id){
+  const barcodeEan=_barcodeCorrente;
+  const payload={
+    nome:document.getElementById('f-nome').value.trim(),
+    descrizione:document.getElementById('f-desc').value.trim()||null,
+    categoria_id:document.getElementById('f-cat').value||null,
+    stanza_id:document.getElementById('f-stanza').value||null,
+    quantita:parseFloat(document.getElementById('f-qty').value)||0,
+    unita_misura:document.getElementById('f-um').value.trim()||'pz',
+    quantita_min:parseFloat(document.getElementById('f-min').value)||0,
+    data_scadenza:document.getElementById('f-scad').value||null,
+    note:document.getElementById('f-note').value.trim()||null,
+  };
+  if(barcodeEan)payload.barcode=barcodeEan;
+  if(!payload.nome){toast('Il nome è obbligatorio','error');return;}
+  try{
+    const d=await api(id?`/oggetti/${id}`:'/oggetti',{method:id?'PUT':'POST',body:JSON.stringify(payload)});
+    if(!d.successo){toast(d.messaggio,'error');return;}
+    const nuovoId=d.dati.id;
+    chiudiModal();caricaLista();toast(id?'Aggiornato':'Aggiunto','success');
+    if(!id)setTimeout(()=>proponiNFC(nuovoId),400);
+  }catch{toast('Errore salvataggio','error');}
+}
+
+function proponiNFC(oggettoId){
+  apriModal(`
+    ${mh("Associa un tag NFC?")}
+    <p style="font-size:.85rem;color:var(--muted);margin-bottom:20px">Vuoi associare subito un tag NFC fisico all'oggetto? Puoi farlo anche in seguito.</p>
+    <button class="btn btn-primary" onclick="richiediNFC(${oggettoId})">Associa ora</button>
+    <button class="btn btn-secondary" onclick="chiudiModal()">Salta, lo faccio dopo</button>`);
+}
+
+// ── Scelta scan ────────────────────────────────────────────────────
+function mostraSceltaScan(){
+  apriModal(`
+    ${mh("Scansiona")}
+    <div class="scan-mode-btns">
+      <div class="scan-mode-btn" onclick="chiudiModal();setTimeout(avviaBarcode,200)">
+        <svg viewBox="0 0 24 24"><rect x="2" y="4" width="3" height="16"/><rect x="7" y="4" width="1.5" height="16"/><rect x="10.5" y="4" width="3" height="16"/><rect x="15.5" y="4" width="1.5" height="16"/><rect x="19" y="4" width="3" height="16"/></svg>
+        <span>Barcode</span>
+        <small>Scansiona EAN, cerca il prodotto online e precompila il form</small>
+      </div>
+      <div class="scan-mode-btn" onclick="chiudiModal();setTimeout(avviaNFCScan,200)">
+        <svg viewBox="0 0 24 24"><path d="M20 7C20 7 17 4 12 4S4 7 4 7"/><path d="M17 10.5C17 10.5 15.5 9 12 9S7 10.5 7 10.5"/><circle cx="12" cy="14" r="2"/></svg>
+        <span>NFC</span>
+        <small>Apri la scheda di un oggetto già catalogato</small>
+      </div>
+    </div>
+    <button class="btn btn-secondary" onclick="chiudiModal();setTimeout(()=>mostraFormNuovo({}),200)">+ Aggiungi manualmente</button>`);
+}
+
+// ── Barcode ────────────────────────────────────────────────────────
+async function avviaBarcode(){
+  const overlay=document.getElementById('barcode-overlay');
+  overlay.classList.add('open');
+  document.getElementById('barcode-status').textContent='Avvio fotocamera...';
+
+  // Prova prima BarcodeDetector nativo (Chrome Android >= 83, molto preciso)
+  if('BarcodeDetector' in window){
+    try{
+      await avviaBarcodeDetectorNativo();
+      return;
+    }catch(e){ console.log('BarcodeDetector fallito, uso Quagga:', e); }
+  }
+  // Fallback: QuaggaJS
+  avviaQuagga();
+}
+
+async function avviaBarcodeDetectorNativo(){
+  barcodeStream=await navigator.mediaDevices.getUserMedia({video:{
+    facingMode:'environment',
+    width:{ideal:1920},height:{ideal:1080}
+  }});
+  const video=document.getElementById('barcode-video');
+  video.srcObject=barcodeStream;
+  await video.play();
+  const track=barcodeStream.getVideoTracks()[0];
+  try{await track.applyConstraints({advanced:[{focusMode:'continuous'}]});}catch{}
+
+  const detector=new BarcodeDetector({formats:['ean_13','ean_8','upc_a','upc_e','code_128','code_39','qr_code','data_matrix']});
+  document.getElementById('barcode-status').textContent='Avvicina il barcode — attesa messa a fuoco...';
+
+  let scanning=true;
+  async function scanFrame(){
+    if(!scanning)return;
+    try{
+      const barcodes=await detector.detect(video);
+      if(barcodes.length>0){
+        scanning=false;
+        const codice=barcodes[0].rawValue;
+        chiudiBarcode();
+        cercaProdottoDaBarcode(codice);
+        return;
+      }
+    }catch{}
+    requestAnimationFrame(scanFrame);
+  }
+  // Aspetta 1.5s per messa a fuoco poi inizia
+  setTimeout(()=>requestAnimationFrame(scanFrame), 1500);
+  // Salva riferimento per stop
+  window._barcodeScanning=()=>{scanning=false;};
+}
+
+function avviaQuagga(){
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}})
+  .then(stream=>{
+    barcodeStream=stream;
+    const video=document.getElementById('barcode-video');
+    video.srcObject=stream; video.play();
+    document.getElementById('barcode-status').textContent='Inquadra il barcode EAN';
+
+    Quagga.init({
+      inputStream:{
+        type:'LiveStream',
+        target:video,
+        constraints:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},
+      },
+      decoder:{readers:['ean_reader','ean_8_reader','upc_reader','upc_e_reader','code_128_reader']},
+      locate:true,
+      numOfWorkers:2,
+      frequency:5,
+    }, err=>{
+      if(err){chiudiBarcode();toast('Errore scanner','error');return;}
+      Quagga.start();
+      Quagga.onDetected(data=>{
+        const codice=data.codeResult.code;
+        chiudiBarcode();
+        cercaProdottoDaBarcode(codice);
+      });
+    });
+  })
+  .catch(()=>{chiudiBarcode();toast('Fotocamera non disponibile','error');});
+}
+
+function chiudiBarcode(){
+  if(window._barcodeScanning){window._barcodeScanning();window._barcodeScanning=null;}
+  try{Quagga.stop();}catch{}
+  try{barcodeStream?.getTracks().forEach(t=>t.stop());}catch{}
+  barcodeReader=null;barcodeStream=null;
+  document.getElementById('barcode-overlay').classList.remove('open');
+}
+let torciaAttiva=false;
+async function toggleTorcia(){
+  try{
+    const track=barcodeStream?.getVideoTracks()[0];
+    if(!track)return;
+    torciaAttiva=!torciaAttiva;
+    await track.applyConstraints({advanced:[{torch:torciaAttiva}]});
+    document.getElementById('torch-btn').textContent=torciaAttiva?'Torcia OFF':'Torcia';
+  }catch{toast('Torcia non disponibile','error');}
+}
+function inserisciManuale(){
+  chiudiBarcode();
+  const codice=prompt('Inserisci il codice a barre:');
+  if(codice&&codice.trim())cercaProdottoDaBarcode(codice.trim());
+}
+
+
+// ── Lookup prodotto ────────────────────────────────────────────────
+async function cercaProdottoDaBarcode(codice){
+  // 1. QR interno: "INV:42"
+  if(codice.startsWith('INV:')){
+    const id=parseInt(codice.split(':')[1]);
+    if(id){apriOggetto(id);return;}
+  }
+  // 2. QR con URL interno
+  const urlMatch=codice.match(/[?&]id=(\d+)|\/oggetti\/(\d+)/);
+  if(urlMatch){
+    const id=parseInt(urlMatch[1]||urlMatch[2]);
+    if(id){apriOggetto(id);return;}
+  }
+  // 3. Estrai EAN numerico se presente
+  const numMatch=codice.match(/(\d{8,14})/);
+  const ean=numMatch?numMatch[1]:null;
+  const isEan=!!ean;
+  // 4. Estrai testo leggibile per ricerca
+  let testoRicerca=codice;
+  try{
+    const u=new URL(codice);
+    const q=u.searchParams.get('q')||u.searchParams.get('name')||u.searchParams.get('product');
+    if(q)testoRicerca=q;
+    else{const seg=u.pathname.split('/').filter(Boolean);if(seg.length)testoRicerca=seg[seg.length-1].replace(/[-_+]/g,' ');}
+  }catch{}
+  testoRicerca=testoRicerca.replace(/[^\w\s]/g,' ').replace(/\s+/g,' ').trim().slice(0,60);
+  const anteprima=ean||testoRicerca;
+  apriModal(`${mh("Ricerca prodotto…")}<div class="spinner"><div class="spin"></div></div><p style="text-align:center;color:var(--muted);font-size:.82rem;margin-top:-20px"><code style="font-family:var(--mono);color:var(--accent2)">${esc(anteprima.slice(0,50))}</code></p>`);
+  let prodotto=null;
+  // Prima cerca per EAN
+  if(isEan)prodotto=await lookupBarcode(ean);
+  // Poi cerca per testo
+  if(!prodotto&&testoRicerca.length>=3)prodotto=await lookupPerTesto(testoRicerca);
+  if(!prodotto){
+    apriModal(`
+      ${mh("Prodotto non trovato")}
+      <p style="font-size:.85rem;color:var(--muted);margin-bottom:16px">Nessun risultato. Il nome è precompilato con il testo letto dal QR.</p>
+      <button class="btn btn-primary" onclick="mostraFormNuovo({nome:${JSON.stringify(testoRicerca)},barcode:${JSON.stringify(isEan?ean:'')}})">Inserisci manualmente</button>
+      <button class="btn btn-secondary" onclick="chiudiModal();setTimeout(avviaBarcode,200)">Riprova scansione</button>`);
+    return;
+  }
+  mostraFormNuovo({nome:prodotto.nome,descrizione:prodotto.brand,categoria_id:prodotto.categoria_id,barcode:isEan?ean:'',_preview:true,_prodName:prodotto.nome,_brand:prodotto.brand,_img:prodotto.img,_source:prodotto.source});
+}
+async function lookupBarcode(codice){
+  for(const fn of[()=>lookupOFF(codice),()=>lookupOBF(codice)]){
+    try{const r=await fn();if(r)return r;}catch{}
+  }
+  return null;
+}
+async function lookupPerTesto(testo){
+  try{
+    const q=encodeURIComponent(testo);
+    const r=await fetch(`https://world.openfoodfacts.org/cgi/search.pl?search_terms=${q}&search_simple=1&action=process&json=1&page_size=5&lc=it`,{signal:AbortSignal.timeout(8000)});
+    const j=await r.json();
+    if(!j.products||!j.products.length)return null;
+    for(const p of j.products){
+      const nome=p.product_name_it||p.product_name||'';
+      if(nome.length>1)return{nome,brand:p.brands||'',img:p.image_front_small_url||p.image_small_url||'',categoria_id:1,source:'Open Food Facts (testo)'};
+    }
+  }catch{}
+  return null;
+}
+async function lookupOFF(codice){
+  const r=await fetch(`https://world.openfoodfacts.org/api/v0/product/${codice}.json`,{signal:AbortSignal.timeout(7000)});
+  const j=await r.json();if(j.status!==1)return null;
+  const p=j.product,nome=p.product_name_it||p.product_name||p.product_name_en||'';
+  if(!nome)return null;
+  return{nome,brand:p.brands||'',img:p.image_front_small_url||p.image_small_url||'',categoria_id:1,source:'Open Food Facts'};
+}
+async function lookupOBF(codice){
+  const r=await fetch(`https://world.openbeautyfacts.org/api/v0/product/${codice}.json`,{signal:AbortSignal.timeout(7000)});
+  const j=await r.json();if(j.status!==1)return null;
+  const p=j.product,nome=p.product_name_it||p.product_name||'';
+  if(!nome)return null;
+  return{nome,brand:p.brands||'',img:p.image_front_small_url||'',categoria_id:2,source:'Open Beauty Facts'};
+}
+
+// ── NFC ────────────────────────────────────────────────────────────
+function avviaNFCScan(){
+  if(!('NDEFReader' in window)){toast('Web NFC non supportato (Chrome Android)','error');return;}
+  mostraNFCOverlay('Avvicina il tag NFC','Tocca lo smartphone al tag per aprire la scheda');
+  nfcCallback=async(nfcId)=>{
+    chiudiNFC();
+    const d=await api(`/nfc/${encodeURIComponent(nfcId)}`);
+    if(d.successo)apriOggetto(d.dati.id);
+    else{toast('Tag non associato — aggiungi prima il prodotto','error');}
+  };
+  avviaNFCReader();
+}
+function richiediNFC(oggettoId){
+  if(!('NDEFReader' in window)){
+    const nfcId=prompt('Inserisci manualmente l\'ID del tag NFC:');
+    if(!nfcId)return;
+    salvaAssociazione(oggettoId,nfcId.trim());return;
+  }
+  chiudiModal();
+  mostraNFCOverlay('Avvicina il tag da associare','Tocca il tag NFC vergine allo smartphone');
+  nfcCallback=(nfcId)=>{chiudiNFC();salvaAssociazione(oggettoId,nfcId);};
+  avviaNFCReader();
+}
+async function salvaAssociazione(oggettoId,nfcId){
+  const d=await api(`/oggetti/${oggettoId}/associa-nfc`,{method:'POST',body:JSON.stringify({nfc_id:nfcId})});
+  if(d.successo){toast('Tag NFC associato!','success');apriOggetto(oggettoId);}
+  else toast(d.messaggio,'error');
+}
+async function dissociaNFC(oggettoId){
+  if(!confirm('Dissocia il tag NFC da questo oggetto? Il tag potrà essere riassegnato ad un altro prodotto.'))return;
+  const d=await api(`/oggetti/${oggettoId}`,{method:'PATCH',body:JSON.stringify({nfc_id:null})});
+  if(d.successo){toast('Tag dissociato','success');apriOggetto(oggettoId);caricaLista();}
+  else toast(d.messaggio,'error');
+}
+async function avviaNFCReader(){
+  try{
+    const reader=new NDEFReader();await reader.scan();
+    reader.onreading=({serialNumber})=>{if(nfcCallback&&serialNumber){nfcCallback(serialNumber);nfcCallback=null;}};
+  }catch{chiudiNFC();toast('Permesso NFC negato','error');}
+}
+function mostraNFCOverlay(titolo,sub){
+  document.getElementById('nfc-hint-text').innerHTML=`<strong>${esc(titolo)}</strong>${esc(sub)}`;
+  document.getElementById('nfc-overlay').classList.add('open');
+}
+function chiudiNFC(){document.getElementById('nfc-overlay').classList.remove('open');nfcCallback=null;}
+
+// ── Modal / Vista ──────────────────────────────────────────────────
+function apriModal(html){document.getElementById('modal-content').innerHTML=html;document.getElementById('overlay').classList.add('open');}
+function mh(titolo){return `<div class="modal-handle"></div><div class="modal-header"><div class="modal-title">${esc(titolo)}</div><button class="modal-close" onclick="chiudiModal()">&#x2715;</button></div>`;}
+function chiudiModal(e){if(e&&e.target!==document.getElementById('overlay'))return;document.getElementById('overlay').classList.remove('open');oggettoCorrente=null;}
+function mostraVista(v){
+  document.getElementById('view-lista').style.display=v==='lista'?'':'none';
+  document.getElementById('view-settings').style.display=v==='settings'?'':'none';
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  if(v==='lista'){document.getElementById('nav-lista').classList.add('active');caricaLista();}
+  if(v==='settings'){document.getElementById('nav-settings').classList.add('active');document.getElementById('set-server-val').textContent=SERVER||'—';document.getElementById('server-input-2').value=SERVER;caricaStats();verificaConnessione();}
+}
+async function verificaConnessione(){
+  const el=document.getElementById('set-stato');
+  try{const d=await api('/');el.textContent=d.successo?'Connesso':'Errore';el.style.color=d.successo?'var(--accent)':'var(--danger)';}
+  catch{el.textContent='Non raggiungibile';el.style.color='var(--danger)';}
+}
+async function caricaStats(){
+  const card=document.getElementById('stats-card');
+  try{
+    const d=await api('/statistiche');if(!d.successo)return;const s=d.dati;
+    card.innerHTML=`
+      <div class="settings-row"><span class="settings-row-label">Oggetti totali</span><span class="settings-row-val">${s.totale_oggetti}</span></div>
+      <div class="settings-row"><span class="settings-row-label">Con tag NFC</span><span class="settings-row-val">${s.con_tag_nfc}</span></div>
+      <div class="settings-row" style="border-bottom:none;padding-bottom:0"><span class="settings-row-label">Senza tag NFC</span><span class="settings-row-val">${s.senza_tag_nfc}</span></div>`;
+  }catch{card.innerHTML='<p style="font-size:.8rem;color:var(--muted);padding:8px 0">Dati non disponibili</p>';}
+}
+
+// ── Doppio tap titolo → scansiona ──────────────────────────────────
+let lastTap=0;
+document.querySelector('.topbar-title').addEventListener('click',()=>{
+  const now=Date.now();if(now-lastTap<400)mostraSceltaScan();lastTap=now;
+});
+
+// ── Utils ──────────────────────────────────────────────────────────
+async function generaPDF(){
+  if(!SERVER){toast('Connetti prima il server','error');return;}
+  toast('Generazione PDF...','success');
+  try{
+    // Carica tutti gli oggetti
+    const d=await api('/oggetti');
+    if(!d.successo){toast('Errore caricamento dati','error');return;}
+    const oggetti=d.dati;
+    if(!oggetti.length){toast('Nessun oggetto da esportare','error');return;}
+
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const oggi=new Date().toLocaleDateString('it-IT');
+    const tra5=new Date(Date.now()+5*864e5).toISOString().slice(0,10);
+
+    // Raggruppa per stanza
+    const gruppi={};
+    oggetti.forEach(o=>{
+      const k=o.stanza||'Senza stanza';
+      if(!gruppi[k])gruppi[k]=[];
+      gruppi[k].push(o);
+    });
+
+    let y=15;
+    // Intestazione
+    doc.setFontSize(16);doc.setFont('helvetica','bold');
+    doc.text('Inventario Casa',14,y);
+    doc.setFontSize(9);doc.setFont('helvetica','normal');
+    doc.setTextColor(120);
+    doc.text(`Stampato il ${oggi} — ${oggetti.length} articoli totali`,14,y+6);
+    doc.setTextColor(0);
+    y+=16;
+
+    for(const [stanza,items] of Object.entries(gruppi)){
+      // Intestazione gruppo
+      doc.setFillColor(31,35,48);
+      doc.rect(14,y,182,7,'F');
+      doc.setTextColor(255);
+      doc.setFontSize(10);doc.setFont('helvetica','bold');
+      doc.text(stanza.toUpperCase(),17,y+5);
+      doc.setTextColor(0);
+      y+=9;
+
+      // Tabella articoli
+      const rows=items.map(o=>{
+        const scad=o.data_scadenza||'—';
+        const scadFlag=o.data_scadenza&&o.data_scadenza<=tra5?'⚠ ':'';
+        const qty=`${o.quantita} ${o.unita_misura||'pz'}`;
+        const min=o.quantita_min>0?`min: ${o.quantita_min}`:'—';
+        return [
+          o.nome+(o.descrizione?'
+'+o.descrizione:''),
+          o.categoria||'—',
+          qty,
+          min,
+          scadFlag+scad,
+          o.note||''
+        ];
+      });
+
+      doc.autoTable({
+        startY:y,
+        head:[['Articolo','Categoria','Quantità','Soglia','Scadenza','Note']],
+        body:rows,
+        margin:{left:14,right:14},
+        styles:{fontSize:8,cellPadding:2,overflow:'linebreak'},
+        headStyles:{fillColor:[74,222,128],textColor:[15,17,23],fontStyle:'bold',fontSize:8},
+        columnStyles:{
+          0:{cellWidth:50},
+          1:{cellWidth:28},
+          2:{cellWidth:22},
+          3:{cellWidth:20},
+          4:{cellWidth:24},
+          5:{cellWidth:38},
+        },
+        alternateRowStyles:{fillColor:[245,247,250]},
+        didParseCell:(data)=>{
+          // Evidenzia rosso le scadenze passate o entro 5gg
+          if(data.column.index===4&&data.section==='body'){
+            const val=data.cell.raw||'';
+            if(val.startsWith('⚠')){
+              data.cell.styles.textColor=[180,0,0];
+              data.cell.styles.fontStyle='bold';
+            }
+          }
+          // Evidenzia quantità sotto soglia
+          if(data.column.index===2&&data.section==='body'){
+            const o=items[data.row.index];
+            if(o&&o.quantita_min>0&&o.quantita<=o.quantita_min){
+              data.cell.styles.textColor=[180,80,0];
+              data.cell.styles.fontStyle='bold';
+            }
+          }
+        },
+        didDrawPage:(data)=>{
+          // Footer pagina
+          doc.setFontSize(7);doc.setTextColor(150);
+          doc.text(`inv.casa — pag. ${doc.internal.getNumberOfPages()}`,14,290);
+          doc.setTextColor(0);
+        }
+      });
+
+      y=doc.lastAutoTable.finalY+8;
+      if(y>260&&Object.keys(gruppi).indexOf(stanza)<Object.keys(gruppi).length-1){
+        doc.addPage();y=15;
+      }
+    }
+
+    // Legenda in fondo
+    if(y<270){
+      doc.setFontSize(7);doc.setTextColor(120);
+      doc.text('⚠ = scadenza entro 5 giorni   |   quantità arancione = sotto soglia minima',14,y+4);
+    }
+
+    doc.save(`inventario-${oggi.replace(/\//g,'-')}.pdf`);
+    toast('PDF salvato!','success');
+  }catch(e){
+    console.error(e);
+    toast('Errore generazione PDF','error');
+  }
+}
+
+let toastTimer;
+function toast(msg,type=''){
+  const el=document.getElementById('toast');el.textContent=msg;el.className='show '+type;
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>el.className='',2500);
+}
+function esc(s){return String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+</script>
+</body>
+</html>
